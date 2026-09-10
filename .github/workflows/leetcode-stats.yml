@@ -17,16 +17,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Fetch LeetCode stats
-        env:
-          LEETCODE_USERNAME: raman1916
         run: |
-          curl -s \
-            -H "Content-Type: application/json" \
-            -H "Referer: https://leetcode.com/" \
-            -A "Mozilla/5.0" \
-            https://leetcode.com/graphql \
-            --data "{\"query\":\"query getUserProfile(\\$username: String!) { matchedUser(username: \\$username) { submitStats: submitStatsGlobal { acSubmissionNum { difficulty count } } } }\",\"variables\":{\"username\":\"$LEETCODE_USERNAME\"}}" \
-            > leetcode.json
+          curl -fL --retry 3 \
+            "https://leetcode-stats-api.herokuapp.com/raman1916" \
+            -o leetcode.json
+
+          echo "LeetCode API response:"
+          cat leetcode.json
 
       - name: Update README
         run: |
@@ -34,23 +31,19 @@ jobs:
           import json
           import re
 
-          with open("leetcode.json", "r") as f:
+          with open("leetcode.json", "r", encoding="utf-8") as f:
               data = json.load(f)
 
-          stats = data["data"]["matchedUser"]["submitStats"]["acSubmissionNum"]
+          if data.get("status") != "success":
+              raise RuntimeError(f"LeetCode API failed: {data}")
 
-          solved = {
-              item["difficulty"]: item["count"]
-              for item in stats
-          }
-
-          easy = solved.get("Easy", 0)
-          medium = solved.get("Medium", 0)
-          hard = solved.get("Hard", 0)
-          total = solved.get("All", easy + medium + hard)
+          easy = data["easySolved"]
+          medium = data["mediumSolved"]
+          hard = data["hardSolved"]
+          total = data["totalSolved"]
 
           new_stats = f"""| Difficulty | Solved |
-          |------------|--------:|
+          |------------|-------:|
           | 🟢 Easy | {easy} |
           | 🟡 Medium | {medium} |
           | 🔴 Hard | {hard} |
@@ -74,6 +67,11 @@ jobs:
               flags=re.DOTALL
           )
 
+          if updated == readme:
+              raise RuntimeError(
+                  "Could not find LEETCODE_STATS_START/END markers in README.md"
+              )
+
           with open("README.md", "w", encoding="utf-8") as f:
               f.write(updated)
           PY
@@ -85,7 +83,9 @@ jobs:
 
           git add README.md
 
-          git diff --cached --quiet || \
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
             git commit -m "Update LeetCode stats"
-
-          git push
+            git push
+          fi
