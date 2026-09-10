@@ -1,0 +1,91 @@
+name: Update LeetCode Stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch LeetCode stats
+        env:
+          LEETCODE_USERNAME: raman1916
+        run: |
+          curl -s \
+            -H "Content-Type: application/json" \
+            -H "Referer: https://leetcode.com/" \
+            -A "Mozilla/5.0" \
+            https://leetcode.com/graphql \
+            --data "{\"query\":\"query getUserProfile(\\$username: String!) { matchedUser(username: \\$username) { submitStats: submitStatsGlobal { acSubmissionNum { difficulty count } } } }\",\"variables\":{\"username\":\"$LEETCODE_USERNAME\"}}" \
+            > leetcode.json
+
+      - name: Update README
+        run: |
+          python3 <<'PY'
+          import json
+          import re
+
+          with open("leetcode.json", "r") as f:
+              data = json.load(f)
+
+          stats = data["data"]["matchedUser"]["submitStats"]["acSubmissionNum"]
+
+          solved = {
+              item["difficulty"]: item["count"]
+              for item in stats
+          }
+
+          easy = solved.get("Easy", 0)
+          medium = solved.get("Medium", 0)
+          hard = solved.get("Hard", 0)
+          total = solved.get("All", easy + medium + hard)
+
+          new_stats = f"""| Difficulty | Solved |
+          |------------|--------:|
+          | 🟢 Easy | {easy} |
+          | 🟡 Medium | {medium} |
+          | 🔴 Hard | {hard} |
+          | **Total** | **{total}** |"""
+
+          with open("README.md", "r", encoding="utf-8") as f:
+              readme = f.read()
+
+          pattern = r"<!-- LEETCODE_STATS_START -->.*?<!-- LEETCODE_STATS_END -->"
+
+          replacement = (
+              "<!-- LEETCODE_STATS_START -->\n"
+              + new_stats
+              + "\n<!-- LEETCODE_STATS_END -->"
+          )
+
+          updated = re.sub(
+              pattern,
+              replacement,
+              readme,
+              flags=re.DOTALL
+          )
+
+          with open("README.md", "w", encoding="utf-8") as f:
+              f.write(updated)
+          PY
+
+      - name: Commit updated README
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          git diff --cached --quiet || \
+            git commit -m "Update LeetCode stats"
+
+          git push
