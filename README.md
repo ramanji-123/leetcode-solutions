@@ -3,14 +3,17 @@
 My solutions to LeetCode problems while learning and practicing
 Data Structures and Algorithms using C++.
 
+
 ## 📊 LeetCode Progress
 
+<!-- LEETCODE_STATS_START -->
 | Difficulty | Solved |
-|------------|--------|
-| 🟢 Easy | 30 |
-| 🟡 Medium | 26 |
-| 🔴 Hard | 1 |
-| **Total** | **57** |
+|------------|--------:|
+| 🟢 Easy | Updating... |
+| 🟡 Medium | Updating... |
+| 🔴 Hard | Updating... |
+| **Total** | **Updating...** |
+<!-- LEETCODE_STATS_END -->
 
 ## 🧠 Topics
 
