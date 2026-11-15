@@ -2,6 +2,9 @@ class Solution {
 public:
     bool isIsomorphic(string s, string t) {
         unordered_map<char,char>stot,ttot;
+
+    if (s.size() != t.size())
+        return false;
         for(int i=0;i<=s.size();i++)
         {
             char cs=s[i];
